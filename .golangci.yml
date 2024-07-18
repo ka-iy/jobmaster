@@ -1,0 +1,124 @@
+# Configuration for golangci-lint
+issues:
+  exclude-dirs:
+    - ^api/gen/
+    - ^docs/
+    - ^gen/
+  exclude-dirs-use-default: false
+  exclude-rules:
+    - linters:
+      - gosimple
+      text: "S1002: should omit comparison to bool constant"
+    - linters:
+      - revive
+      text: "exported: exported const"
+    - linters: [staticcheck]
+      text: "grpc.Dial is deprecated"
+    - linters: [staticcheck]
+      text: "grpc.DialContext is deprecated"
+    # Deprecated gRPC dial options. Related to grpc.NewClient.
+    - path: (client/client.go) # api/
+      linters: [staticcheck]
+      # grpc.FailOnNonTempDialError
+      # grpc.WithReturnConnectionError
+      text: "this DialOption is not supported by NewClient"
+  exclude-use-default: true
+  max-same-issues: 0
+  max-issues-per-linter: 0
+
+linters:
+  disable-all: true
+  enable:
+    - bodyclose
+    - depguard
+    - errorlint
+    - goimports
+    - gosimple
+    - govet
+    - ineffassign
+    - misspell
+    - nolintlint
+    - revive
+    - sloglint
+    - staticcheck
+    - testifylint
+    - unconvert
+    - unused
+
+linters-settings:
+  depguard:
+    rules:
+      main:
+        deny:
+          - pkg: io/ioutil
+            desc: 'use "io" or "os" packages instead'
+          - pkg: github.com/golang/protobuf
+            desc: 'use "google.golang.org/protobuf"'
+          - pkg: github.com/hashicorp/go-uuid
+            desc: 'use "github.com/google/uuid" instead'
+          - pkg: github.com/pborman/uuid
+            desc: 'use "github.com/google/uuid" instead'
+          - pkg: github.com/siddontang/go-log/log
+            desc: 'use "github.com/sirupsen/logrus" instead'
+          - pkg: github.com/siddontang/go/log
+            desc: 'use "github.com/sirupsen/logrus" instead'
+          - pkg: github.com/tj/assert
+            desc: 'use "github.com/stretchr/testify/assert" instead'
+          - pkg: go.uber.org/atomic
+            desc: 'use "sync/atomic" instead'
+          - pkg: golang.design
+            desc: 'experimental project, not to be confused with official Go packages'
+          - pkg: golang.org/x/exp/slices
+            desc: 'use "slices" instead'
+      # Prevent logrus from being imported by api.
+      # use log/slog instead
+      logrus:
+        files:
+          - '**/api/**'
+        deny:
+          - pkg: github.com/sirupsen/logrus
+            desc: 'use "log/slog" instead'
+  errorlint:
+    comparison: true
+    asserts: true
+    errorf: true
+  misspell:
+    locale: US
+  nolintlint:
+    allow-unused: true # Enabled because of conditional builds / build tags.
+    require-explanation: true
+    require-specific: true
+  revive:
+    rules:
+    - name: unused-parameter
+      disabled: true
+  sloglint:
+    context: all
+    key-naming-case: snake
+    static-msg: true
+    forbidden-keys:
+      - level
+      - msg
+      - source
+      - time
+  testifylint:
+    disable-all: true
+    enable:
+      - bool-compare
+      - compares
+      - empty
+      - error-is-as
+      - error-nil
+      - expected-actual
+      - float-compare
+      - len
+      - suite-extra-assert-call
+      - suite-thelper
+
+output:
+  uniq-by-line: false
+
+run:
+  go: '1.22'
+  build-tags: []
+  timeout: 15m

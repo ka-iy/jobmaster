@@ -1,0 +1,123 @@
+syntax = "proto3";
+
+package jobmaster.jobs.v1; 
+option go_package = "jobmaster/api/gen/proto/go/jobs/v1;jobsv1";
+
+import "google/protobuf/timestamp.proto";
+
+// Compile with:
+//    protoc --go_opt=paths=source_relative \
+//        --go-grpc_opt=paths=source_relative \
+//        --go_out=../../../gen/proto/go/jobs/v1 \
+//        --go-grpc_out=../../../gen/proto/go/jobs/v1 \
+//        jobs.proto
+
+// JobService is the RPC service which models the API exposed by the job
+// service framework.
+service JobService {
+    // Start starts a job with the given creation parameters.
+    // It returns a response with the details of the job which was created.
+    rpc Start(JobCreateRequest) returns (JobID) {}
+
+    // Stop stops a job with the given JobID.
+    // It returns a response with the details of the job which was stopped.
+    // A client will only be able to stop its own jobs - i.e jobs which it
+    // started. The superuser would be able to stop any job.
+    rpc Stop(JobIDRequest) returns (JobResponse) {}
+
+    // Status gets the status of a job with the given ID.
+    // It returns a response with the details of the job whose status was requested.
+    // A client will only be able to view its own jobs - i.e jobs which it started.
+    rpc Status(JobIDRequest) returns (JobResponse) {}
+
+    // StreamOutput streams the output (combined stdout and stderr) for the given job.
+    // Jobs that have already outputted logs/output will have their entire output
+    // streamed from the beginning up to the latest available output entry. If the job
+    // has already exited, the stream will terminate after streaming the final available
+    // output entry.
+    rpc StreamOutput(JobIDRequest) returns (stream JobOutputResponse){}
+}
+
+// JobState is an enum which defines the states a job could be in.
+enum JobState {
+    JOBSTATE_UNSPECIFIED = 0;
+    JOBSTATE_RUNNING = 1;
+    JOBSTATE_TERMINATED_BY_API = 2;
+    JOBSTATE_COMPLETED = 3;
+}
+
+// JobID is a message which contains the ID of the job of interest.
+// Job IDs are automatically assigned to every submitted job.
+// The JOB ID is a KSUID (K-Searchable Unique Identifier).
+// See: https://segment.com/blog/a-brief-history-of-the-uuid/
+// This message is used in requests as well as responses.
+message JobID {
+    string jobID = 1;
+}
+
+
+////////////////////// Request messages //////////////////////
+//JobCreateRequest is a request used to request the creation of a job on the server.
+message JobCreateRequest {
+    // command is the command to be run on the job server.
+    string command = 1;
+
+    // args is the (optional) list of commandline arguments for the command to be run.
+    repeated string args = 2;
+}
+
+// JobIDRequest is a request message containing the ID of the job of interest.
+// It is used in the RPCs which request job stop, status, and streaming.
+message JobIDRequest {
+    JobID jobIDRequest = 1;
+}
+
+////////////////////// Response Messages //////////////////////
+// JobResponse is a response message containing the status/details of a particular job.
+message JobResponse {
+    // JobID is the ID of this particular job. A job ID is a server-assigned KSUID.
+    JobID jobIDResponse = 1;
+
+    // jobMsg is a status message from the Job service framework.
+    // It can contain informational messages or framework-related errors.
+    // Note that this is not a status message from the output of the job.
+    string jobMsg = 2;
+
+    // client is the the name of the client/user who started the job.
+    string client = 3;
+
+    // pid is the process ID of the job. If the job failed to start, this will
+    // be negative.
+    int32 pid = 4;
+
+    // state is the current execution state of this job.
+    JobState state = 5;
+
+    // exitCode is the exit code from the process associated with this job.
+    // Any value here is only valid if the job state is in one of the terminated states.
+    // -1 indicates that the job was terminated by a signal, in which case the
+    // associated signal will be present as a string in signalStr.
+    sint32 exitCode = 6;
+
+    // signalStr is the string representation of the termination signal received,
+    // if any, by the process associated with this job.
+    string signalStr = 7;
+
+    // cmd is the actual commandline (with arguments, if any) of the command which
+    // was used when creating a job.
+    JobCreateRequest cmd = 8;
+
+    // started is the starting time of the job, as a Unix epoch timestamp.
+    // The epoch timestamp is UTC-based and has nanosecond resolution.
+    google.protobuf.Timestamp started = 9;
+
+    // ended is the end time of the job, as a Unix epoch timestamp.
+    // The epoch timestamp is UTC-based and has nanosecond resolution.
+    // Will be nil if the job is still running.
+    google.protobuf.Timestamp ended = 10;
+}
+
+// JobOutputResponse is a message containing the byte stream of job output.
+message JobOutputResponse {
+    bytes output = 1;
+}

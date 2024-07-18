@@ -7,6 +7,8 @@ Jobmaster is a Go (golang) proof-of-concept of a gRPC client and server for a si
 
 It supports multiple concurrent clients making requests to a single server. The functionality includes being able to start, stop, show status of, and stream the output of, the afore-mentioned Linux processes/jobs which are resource-limited using cgroups. Since cgroup setup requires elevated privileges, the job server necessarily requires that it be started as a privileged user.
 
+One of the cgroup limits set is for IO to block devices. Therefore, when unit-testing or running the server, you will need to specify Linux device ID (in the usual `<MAJOR>:<MINOR>` format) for the IO device for which to set the cgroup limits for IO.
+
 ----------------------------
 
 ## Building It
